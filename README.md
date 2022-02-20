@@ -1,4 +1,22 @@
+# How to run the solution
+
+The solution is added to the docker-compose.yml file. Running the solution is as simply as running `docker-compose up -d`. Docker compose will download an image and run it automatically. 
+
+You can also build the image locally by typing  
+
+`docker build -t <name> .`
+`docker run --rm --network host  <name>`
+
+in the solution folder.
+
+You can also run the code without docker. Instructions are porvided in `solutions` folder.  
+
+The solutions container is linked with an image from docker hub. It won't create an image based on the local version. I did that because that is how other containers in this repo are set up.
+
 # Challenge the coder
+
+
+
 
 ## Programming exercise for software, robotics and machine vision engineer candidates at Aivero AS
 
