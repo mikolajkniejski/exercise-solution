@@ -1,14 +1,6 @@
 const amqp = require("amqplib");
 var JSONbig = require("json-bigint");
 
-function sleep(milliseconds) {
-  const date = Date.now();
-  let currentDate = null;
-  do {
-    currentDate = Date.now();
-  } while (currentDate - date < milliseconds);
-}
-
 class Deque {
   constructor() {
     this.queue = [];
@@ -36,58 +28,53 @@ class Deque {
 
 dq = new Deque();
 
-async function connect() {
-  async function connection_handler() {
-    while (true) {
-      try {
-        return await amqp.connect("amqp://0.0.0.0:5672");
-      } catch (err) {
-        console.log("Couldn't connect, retrying in 5 s.");
-        sleep(5000);
-      }
-    }
-  }
+// After each error, connect() will wait 5 sec and restart. It's a poor approach
+// and could be improved by setting a different flows for errors coming from
+// not ready connection and errors coming from operations on objects.
 
-  const connection = await connection_handler();
-  console.log("Connected!");
+(async function connect() {
+  amqp
+    .connect("amqp://0.0.0.0:5672")
+    .then((con) => con.createChannel())
+    .then((channel) => {
+      channel.assertQueue("rand", { durable: false });
+      console.log("Connected!");
+      channel.consume("rand", (message) => {
+        let { rand, sequence_number } = JSON.parse(message.content.toString());
 
-  try {
-    const channel = await connection.createChannel();
-    console.log("Created Channel!");
+        const bigRand = BigInt(rand);
 
-    channel.consume("rand", (message) => {
-      let { rand, sequence_number } = JSON.parse(message.content.toString());
+        // Javascript can not handle numbers bigger than 2^53 - 1 and we have to use BigInt type.
+        // If we didn't do that, JS would approximate each number and reaplce three
+        // or four last digits with zeros and some comparisons might fail.
 
-      const bigRand = BigInt(rand);
+        while (bigRand > dq.lookup()?.rand) {
+          dq.pop();
+        }
+        dq.push({ rand: bigRand, sequence_number });
 
-      // Javascript can not handle numbers bigger than 2^53 - 1 and we have to use BigInt type.
-      // If we didn't do that, JS would approximate each number and reaplce three
-      // or four last digits with zeros and some comparisons might fail.
+        if (dq.queue[0].sequence_number <= sequence_number - dq.window) {
+          dq.shift();
+        }
 
-      while (bigRand > dq.lookup()?.rand) {
-        dq.pop();
-      }
-      dq.push({ rand: bigRand, sequence_number });
+        let msg = {
+          sequence_number,
+          rand: bigRand,
+          running_max: dq.high(),
+        };
 
-      if (dq.queue[0].sequence_number <= sequence_number - dq.window) {
-        dq.shift();
-      }
+        msg = JSONbig.stringify(msg);
+        // Standard JSON module can not stringify BigInts and so it's necessary to use a different one.
 
-      let msg = {
-        sequence_number,
-        rand: bigRand,
-        running_max: dq.high(),
-      };
-
-      msg = JSONbig.stringify(msg);
-      // Standard JSON module can not stringify BigInts and so it's necessary to use a different one.
-
-      channel.sendToQueue("solution", Buffer.from(msg));
-      channel.ack(message);
+        channel.sendToQueue("solution", Buffer.from(msg));
+        channel.ack(message);
+      });
+    })
+    .catch((err) => {
+      console.log("Error connecting, trying again in 5 sec");
+      console.log(err);
+      setTimeout(() => {
+        connect();
+      }, 1000);
     });
-  } catch (err) {
-    console.log(err);
-  }
-}
-
-connect();
+})();

@@ -30,7 +30,7 @@ services:
       - ./results:/results:rw
 
   solution:
-    image: mikolajkniejski/solution:1.0.5
+    image: mikolajkniejski/solution:1.0.6
     container_name: solution
     restart: unless-stopped
     network_mode: host
