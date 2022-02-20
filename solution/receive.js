@@ -1,6 +1,14 @@
 const amqp = require("amqplib");
 var JSONbig = require("json-bigint");
 
+function sleep(milliseconds) {
+  const date = Date.now();
+  let currentDate = null;
+  do {
+    currentDate = Date.now();
+  } while (currentDate - date < milliseconds);
+}
+
 class Deque {
   constructor() {
     this.queue = [];
@@ -28,16 +36,30 @@ class Deque {
 
 dq = new Deque();
 
-console.log("working");
-
 async function connect() {
+  async function connection_handler() {
+    while (true) {
+      try {
+        return await amqp.connect("amqp://0.0.0.0:5672");
+      } catch (err) {
+        console.log("Couldn't connect, retrying in 5 s.");
+        sleep(5000);
+      }
+    }
+  }
+
+  const connection = await connection_handler();
+  console.log("Connected!");
+
   try {
-    const connection = await amqp.connect("amqp://0.0.0.0:5672");
     const channel = await connection.createChannel();
-    console.log("connected!");
+    console.log("Created Channel!");
+
     channel.consume("rand", (message) => {
       let { rand, sequence_number } = JSON.parse(message.content.toString());
+
       const bigRand = BigInt(rand);
+
       // Javascript can not handle numbers bigger than 2^53 - 1 and we have to use BigInt type.
       // If we didn't do that, JS would approximate each number and reaplce three
       // or four last digits with zeros and some comparisons might fail.
@@ -64,7 +86,7 @@ async function connect() {
       channel.ack(message);
     });
   } catch (err) {
-    console.error(err);
+    console.log(err);
   }
 }
 

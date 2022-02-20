@@ -28,11 +28,11 @@ services:
       - rabbitmq
     volumes:
       - ./results:/results:rw
+
   solution:
-    image: mikolajkniejski/solution:1.0.2
+    image: mikolajkniejski/solution:1.0.5
     container_name: solution
     restart: unless-stopped
     network_mode: host
     depends_on:
       - rabbitmq
-      - validator
