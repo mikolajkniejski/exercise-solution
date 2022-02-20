@@ -34,7 +34,7 @@ async function connect() {
   try {
     const connection = await amqp.connect("amqp://0.0.0.0:5672");
     const channel = await connection.createChannel();
-
+    console.log("connected!");
     channel.consume("rand", (message) => {
       let { rand, sequence_number } = JSON.parse(message.content.toString());
       const bigRand = BigInt(rand);
@@ -61,6 +61,7 @@ async function connect() {
       // Standard JSON module can not stringify BigInts and so it's necessary to use a different one.
 
       channel.sendToQueue("solution", Buffer.from(msg));
+      channel.ack(message);
     });
   } catch (err) {
     console.error(err);
