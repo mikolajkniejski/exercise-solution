@@ -1,4 +1,4 @@
-version: '3'
+version: "3"
 
 services:
   rabbitmq:
@@ -16,7 +16,7 @@ services:
       - WAIT_MILLIES=0
     depends_on:
       - rabbitmq
-  
+
   validator:
     image: registry.gitlab.com/aivero/open-source/programming-exercise/validator:master
     container_name: validator
@@ -27,4 +27,12 @@ services:
     depends_on:
       - rabbitmq
     volumes:
-    - ./results:/results:rw
+      - ./results:/results:rw
+  solution:
+    image: mikolajkniejski/solution:1.0.2
+    container_name: solution
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      - rabbitmq
+      - validator
