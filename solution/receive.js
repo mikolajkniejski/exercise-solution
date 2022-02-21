@@ -75,6 +75,6 @@ dq = new Deque();
       console.log(err);
       setTimeout(() => {
         connect();
-      }, 1000);
+      }, 5000);
     });
 })();
